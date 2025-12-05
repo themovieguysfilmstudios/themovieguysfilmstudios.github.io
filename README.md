@@ -1,479 +1,594 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>THE MOVIE GUYS FILM STUDIOS LLC</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root{--netflix-red:#e50914}
-    .bg-netflix-red{background:var(--netflix-red)} .text-netflix-red{color:var(--netflix-red)}
-    body{background:#121212;color:#E0E0E0;font-family:Inter,system-ui,Arial}
-    .window{animation:float 4s infinite ease-in-out}
-    .window.admin-active:hover{border-color:var(--netflix-red);background:#1e1e1e}
-    @keyframes float{0%{transform:translateY(0)}50%{transform:translateY(-5px)}100%{transform:translateY(0)}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE MOVIE GUYS FILM STUDIOS LLC</title>
+<!-- Load Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Firebase Imports (Required for Persistence) -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    
+    // Global variables for Firebase access
+    window.initializeApp = initializeApp;
+    window.getAuth = getAuth;
+    window.signInAnonymously = signInAnonymously;
+    window.signInWithCustomToken = signInWithCustomToken;
+    window.onAuthStateChanged = onAuthStateChanged;
+    window.getFirestore = getFirestore;
+    window.doc = doc;
+    window.onSnapshot = onSnapshot;
+    window.setDoc = setDoc;
+    window.setLogLevel = setLogLevel;
+</script>
+
+<!-- Use Inter font for a modern look -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+body {
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    background-color: #0d0d0d;
+}
+/* Custom floating animation for the media windows */
+.window {
+    animation: float 4s infinite ease-in-out;
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    /* Subtle filter indicates content is locked/unavailable when not admin */
+    filter: brightness(0.7); 
+}
+.window:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(229, 9, 20, 0.3); /* Red shadow on hover */
+}
+.admin-active {
+    filter: brightness(1.0); /* Full brightness when admin is active */
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1); /* Subtle white shadow for active state */
+}
+.admin-active:hover {
+    box-shadow: 0 10px 20px rgba(229, 9, 20, 0.5); /* Strong red shadow on hover */
+}
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+/* Ensure media fills the container */
+.window img, .window video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+/* Style for loading indicator */
+#loading-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+.spinner {
+    border: 8px solid #333;
+    border-top: 8px solid #e50914;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+<script>
+tailwind.config = {
+theme: {
+extend: {
+colors: {
+'netflix-red': '#e50914',
+}
+}
+}
+}
+</script>
 </head>
-<body class="min-h-screen p-4 md:p-8">
+<body class="bg-gray-900 text-white">
 
-  <header class="flex flex-col md:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-700">
-    <div class="flex items-center">
-      <span class="text-4xl mr-4" role="img" aria-label="film reel">🎬</span>
-      <h1 class="text-3xl font-bold text-netflix-red tracking-wider">THE MOVIE GUYS FILM STUDIOS LLC</h1>
+<!-- Loading Indicator -->
+<div id="loading-indicator">
+    <div class="spinner"></div>
+</div>
+
+<!-- Header Section -->
+<header class="flex items-center justify-between p-6 bg-gray-950 border-b-4 border-netflix-red shadow-2xl">
+    <div class="flex items-center space-x-4">
+        <!-- Film Reel SVG/Logo Placeholder -->
+        <svg class="w-10 h-10 text-netflix-red" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M18 3v2h-2V3H8v2H6V3H4v18h2v-2h2v2h8v-2h2v2h2V3h-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm10 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V7h2v2z"/>
+        </svg>
+        <h1 class="text-3xl font-extrabold text-white tracking-widest uppercase">THE MOVIE GUYS FILM STUDIOS LLC</h1>
     </div>
-    <div class="flex space-x-4 mt-4 md:mt-0">
-      <button id="loginButton" onclick="openLogin()" class="py-2 px-6 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">Admin Sign In</button>
-      <button id="logoutButton" onclick="logout()" class="py-2 px-6 bg-netflix-red text-white rounded-lg hidden">Logout</button>
+    <!-- Admin Buttons: Sign In and Logout -->
+    <div id="auth-controls" class="flex items-center">
+        <!-- Login Button: calls openLogin to show the modal -->
+        <button id="loginButton" onclick="openLogin()" class="px-6 py-2 bg-netflix-red hover:bg-red-700 text-white font-semibold rounded-lg shadow-lg transition duration-300 transform hover:scale-105">
+            Admin Sign In
+        </button>
+        
+        <!-- Logout Button: hidden by default -->
+        <button id="logoutButton" onclick="logout()" class="hidden px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg shadow-lg transition duration-300 transform hover:scale-105">
+            Admin Sign Out
+        </button>
     </div>
-  </header>
+</header>
 
-  <div id="statusMessage" class="hidden mb-6 p-3 bg-green-900 border border-green-700 text-green-300 rounded-lg shadow-inner">
-    <p class="text-sm font-medium">✅ Admin Mode Active: Media will be uploaded to Firebase Storage (if configured).</p>
-  </div>
+<!-- Media Windows Section (Drag & Drop) -->
+<section class="windows grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 p-8 md:p-12 max-w-7xl mx-auto">
+<!-- Window 1 -->
+<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="1" ondrop="drop(event,1)" ondragover="allowDrop(event)">
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop Media Here (1)</div>
+</div>
+<!-- Window 2 -->
+<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="2" ondrop="drop(event,2)" ondragover="allowDrop(event)">
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop Media Here (2)</div>
+</div>
+<!-- Window 3 -->
+<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="3" ondrop="drop(event,3)" ondragover="allowDrop(event)">
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop Media Here (3)</div>
+</div>
+<!-- Window 4 -->
+<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="4" ondrop="drop(event,4)" ondragover="allowDrop(event)">
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop Media Here (4)</div>
+</div>
+<!-- Window 5: First Long Window (spans two columns) -->
+<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="5" ondrop="drop(event,5)" ondragover="allowDrop(event)">
+<div class="drop-area text-center p-4 transition duration-300">Long Media Drop Zone (5)</div>
+</div>
+<!-- Window 6: Second Long Window (new, spans two columns) -->
+<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="6" ondrop="drop(event,6)" ondragover="allowDrop(event)">
+<div class="drop-area text-center p-4 transition duration-300">Long Media Drop Zone (6)</div>
+</div>
+</section>
 
-  <main class="container mx-auto">
-    <div id="media-windows" class="grid grid-cols-2 lg:grid-cols-4 gap-6"></div>
-  </main>
+<!-- Company Statement and Contact Info Section (Unchanged) -->
+<footer class="max-w-7xl mx-auto p-8 md:p-12 mt-10 bg-gray-950 rounded-xl shadow-2xl border-t-4 border-gray-700">
+<!-- Company Goals/Statement -->
+<div class="mb-10">
+<h2 class="text-4xl font-extrabold text-netflix-red mb-4">Our Vision. Our Story.</h2>
+<p class="text-lg text-gray-300 leading-relaxed border-l-4 border-netflix-red pl-4 py-2 bg-gray-900 rounded-r-lg">
+At **THE MOVIE GUYS FILM STUDIOS LLC**, our goal is simple: to redefine cinematic storytelling. We are a passionate, driven film company committed to producing visually stunning, emotionally resonant, and culturally impactful content. We strive to be the definitive hub for independent, high-quality filmmaking, pushing the boundaries of creativity and technical excellence to captivate global audiences.
+</p>
+</div>
 
-  <!-- Login Modal -->
-  <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50">
-    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-sm border border-netflix-red">
-      <h2 class="text-2xl font-bold mb-6 text-white text-center">Admin Access</h2>
-      <input type="text" id="user" placeholder="Username" class="w-full p-3 mb-4 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-400">
-      <input type="password" id="pass" placeholder="Password" class="w-full p-3 mb-6 bg-gray-900 border border-gray-600 rounded-lg text-white placeholder-gray-400">
-      <button id="loginAction" class="w-full py-3 bg-netflix-red text-white font-bold rounded-lg">Sign In</button>
-    </div>
-  </div>
+<!-- Contact Information -->
+<div>
+<h2 class="text-3xl font-bold text-white mb-6">Contact Us</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-gray-400">
+<div class="flex items-center space-x-3 p-4 bg-gray-800 rounded-lg shadow-md">
+<!-- Email Icon -->
+<svg class="w-6 h-6 text-netflix-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+<div>
+<span class="font-semibold text-sm block">Email</span>
+<a href="mailto:themovieguysfilmstudiosllc@gmail.com" class="text-white hover:text-netflix-red transition">themovieguysfilmstudiosllc@gmail.com</a>
+</div>
+</div>
+<div class="flex items-center space-x-3 p-4 bg-gray-800 rounded-lg shadow-md">
+<!-- Phone Icon -->
+<svg class="w-6 h-6 text-netflix-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-3.96a20.08 20.08 0 01-11.88-11.88V5z"></path></svg>
+<div>
+<span class="font-semibold text-sm block">Phone</span>
+<a href="tel:3092615796" class="text-white hover:text-netflix-red transition">309-261-5796</a>
+</div>
+</div>
 
-  <!-- Message Modal (reusable) -->
-  <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-75 hidden items-center justify-center z-50">
-    <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-gray-600 text-center">
-      <div id="messageText" class="text-white text-lg font-medium mb-6"></div>
-      <div id="messageButtons" class="flex justify-center gap-4">
-        <button id="messageOk" onclick="closeMessageModal()" class="py-2 px-6 bg-netflix-red text-white rounded-lg">OK</button>
-      </div>
-    </div>
-  </div>
+<div class="flex items-center space-x-3 p-4 bg-gray-800 rounded-lg shadow-md">
+<!-- Address Icon -->
+<svg class="w-6 h-6 text-netflix-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+<div>
+<span class="font-semibold text-sm block">Address</span>
+<p class="text-white">1713 Indiana St, Bloomington, IL</p>
+</div>
+</div>
+</div>
+</div>
+</footer>
 
-  <!-- Fullscreen video modal -->
-  <div id="videoModal" class="fixed inset-0 bg-black bg-opacity-95 hidden items-center justify-center z-50 p-4" onclick="closeFullscreenVideo()">
-    <div id="videoContainer" class="w-full h-full max-w-4xl max-h-4xl relative" onclick="event.stopPropagation()"></div>
-    <button class="absolute top-4 right-4 text-white text-4xl hover:text-netflix-red" onclick="closeFullscreenVideo()">&times;</button>
-  </div>
+<!-- Admin Login Modal --> 
+<div id="loginModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50"> 
+<div class="bg-gray-800 p-10 rounded-xl shadow-2xl w-full max-w-sm text-center transform transition-all duration-300 scale-100 border-t-4 border-netflix-red"> 
+<h2 class="text-4xl font-black text-white mb-6">Admin Login</h2> 
+<input type="text" id="user" placeholder="Username" class="w-full mb-4 p-4 bg-gray-700 text-white border border-gray-600 rounded-lg focus:ring-netflix-red focus:border-netflix-red transition duration-150 placeholder-gray-400"> 
+<input type="password" id="pass" placeholder="Password" class="w-full mb-6 p-4 bg-gray-700 text-white border border-gray-600 rounded-lg focus:ring-netflix-red focus:border-netflix-red transition duration-150 placeholder-gray-400"> 
+<button onclick="login()" class="w-full py-3 bg-netflix-red hover:bg-red-700 text-white font-bold text-lg rounded-lg shadow-xl transform hover:scale-[1.02] transition duration-200"> 
+Sign In 
+</button> 
+<button onclick="document.getElementById('loginModal').style.display = 'none';" class="mt-4 text-gray-400 hover:text-white transition duration-200"> 
+Cancel 
+</button> 
+</div> 
+</div> 
 
-  <!-- Firebase SDKs + app script -->
-  <script type="module">
-  // ---- IMPORTS (single app import + named imports) ----
-  import { initializeApp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-  import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+<!-- Custom Message Modal (Replaces alert()) -->
+<div id="messageModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-[60]">
+<div class="bg-gray-800 p-6 rounded-xl shadow-2xl w-full max-w-xs text-center border-t-4 border-netflix-red">
+<p id="messageText" class="text-white text-lg font-semibold mb-6"></p>
+<button onclick="closeMessageModal()" class="py-2 px-6 bg-netflix-red hover:bg-red-700 text-white font-semibold rounded-lg transition duration-200">
+OK
+</button>
+</div>
+</div>
 
-  // ---- CONFIG INJECTION (server may define these globals) ----
-  const injectedAppId = (typeof __app_id !== 'undefined') ? String(__app_id) : 'default-app-id';
-  const injectedFirebaseConfig = (typeof __firebase_config !== 'undefined') ? __firebase_config : null;
-  const injectedAuthToken = (typeof __initial_auth_token !== 'undefined') ? String(__initial_auth_token) : null;
+<!-- Full Screen Video Modal (New Element) -->
+<div id="videoModal" class="fixed inset-0 bg-black bg-opacity-95 hidden items-center justify-center z-[70] p-4">
+<div class="relative w-full h-full max-w-7xl max-h-5xl">
+<!-- Close Button (top right corner) -->
+<button onclick="closeFullscreenVideo()" class="absolute top-4 right-4 text-white text-4xl font-bold w-10 h-10 flex items-center justify-center rounded-full bg-netflix-red hover:bg-red-700 transition duration-300 z-[80] shadow-xl">
+&times;
+</button>
+<!-- Video Container -->
+<div id="videoContainer" class="w-full h-full flex items-center justify-center">
+<!-- Video element will be inserted here -->
+</div>
+</div>
+</div>
 
-  // ---- FEATURE FLAGS / AVAILABILITY ----
-  const firebaseAvailable = Boolean(injectedFirebaseConfig && typeof injectedFirebaseConfig === 'object' && Object.keys(injectedFirebaseConfig).length > 0);
+<script>
+    // --- Firebase Global Variables and Initialization ---
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-  // Globals
-  let app = null;
-  let auth = null;
-  let db = null;
-  let storage = null;
-  let userId = null;
-  window.isAdminLoggedIn = false;
-  const localFileMap = new Map(); // temporary previews
+    let app, db, auth, userId = 'visitor'; // Default ID
+    let isAdminLoggedIn = false;
+    let currentMediaConfig = {}; // Local cache for media configuration
 
-  // Firestore location
-  // VALID pattern: collection/doc/collection/doc
-  const APP_COLLECTION = 'artifacts';
-  const APP_DOC_ID = injectedAppId;
-  const MEDIA_COLLECTION = 'media';
-  const CONFIG_DOC_ID = 'media_layout';
+    // DOM elements
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const loginBtn = document.getElementById('loginButton');
+    const logoutBtn = document.getElementById('logoutButton');
+    const windows = document.querySelectorAll('.window');
 
-  const CONFIG_DOC_REF = () => {
-    if (!db) return null;
-    return doc(db, APP_COLLECTION, APP_DOC_ID, MEDIA_COLLECTION, CONFIG_DOC_ID);
-  };
+    // Reference to the single document storing the media configuration (public data)
+    let mediaDocRef = null;
 
-  const STORAGE_BASE = `artifacts/${APP_DOC_ID}/public/media`;
-
-  // PLACEHOLDERS
-  const PLACEHOLDERS = {
-    image: (i) => `https://placehold.co/800x450/1e1e1e/e50914?text=Window+${i}+Image`,
-    video: (i) => `https://placehold.co/800x450/1e1e1e/e50914?text=Window+${i}+Video`
-  };
-
-  // init firebase if config provided
-  function initFirebase() {
-    if (!firebaseAvailable) {
-      console.warn("Firebase config not provided — running in offline placeholder mode.");
-      return;
-    }
-    try {
-      app = initializeApp(injectedFirebaseConfig);
-      setLogLevel('warn');
-      auth = getAuth(app);
-      db = getFirestore(app);
-      storage = getStorage(app);
-    } catch (e) {
-      console.error("Error initializing Firebase:", e);
-    }
-  }
-
-  // AUTH: prefer injected custom token, else anonymous
-  async function initAuth() {
-    if (!firebaseAvailable || !auth) return;
-    try {
-      if (injectedAuthToken) {
-        await signInWithCustomToken(auth, injectedAuthToken);
-      } else {
-        await signInAnonymously(auth);
-      }
-    } catch (e) {
-      console.error("Auth init error:", e);
-      // fall back to anonymous attempt
-      try { await signInAnonymously(auth); } catch(e2){ console.error(e2); }
-    }
-  }
-
-  // Listen for auth state and start listening to Firestore when ready
-  function setupAuthListener() {
-    if (!firebaseAvailable || !auth) return;
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        userId = user.uid;
-        console.log("Auth ready, uid:", userId);
-        // Delay slightly to ensure auth tokens propagate if needed
-        setTimeout(initMediaListener, 100);
-      } else {
-        userId = null;
-        console.log("No firebase user");
-      }
-    });
-  }
-
-  // --- UI helpers ---
-  function showMessage(text, buttonsHtml = null) {
-    const modal = document.getElementById('messageModal');
-    const messageText = document.getElementById('messageText');
-    const messageButtons = document.getElementById('messageButtons');
-    messageText.innerHTML = text;
-    if (buttonsHtml) {
-      messageButtons.innerHTML = buttonsHtml;
-    } else {
-      messageButtons.innerHTML = `<button id="messageOk" onclick="closeMessageModal()" class="py-2 px-6 bg-netflix-red text-white rounded-lg">OK</button>`;
-    }
-    modal.style.display = 'flex';
-  }
-  window.showAlert = (txt) => showMessage(txt);
-  function closeMessageModal() { document.getElementById('messageModal').style.display = 'none'; }
-  window.closeMessageModal = closeMessageModal;
-
-  // --- render windows ---
-  const defaultWindows = [1,2,3,4].map(i => ({ index: i, type: 'empty', url: '', storagePath: '', classes: '' }));
-
-  function renderWindows(config = defaultWindows) {
-    const container = document.getElementById('media-windows');
-    container.innerHTML = '';
-    config.forEach(item => {
-      const div = document.createElement('div');
-      const extra = (item.classes || '').split(' ').filter(Boolean);
-      div.classList.add('window','relative','w-full','h-64','bg-gray-900','border-2','border-dashed','border-gray-700','rounded-xl','flex','justify-center','items-center','text-gray-500','overflow-hidden','shadow-xl','transition','duration-300', ...extra);
-      div.dataset.index = String(item.index);
-      // event handlers via addEventListener for module scope safety
-      div.addEventListener('dragover', (e) => allowDrop(e));
-      div.addEventListener('drop', (e) => drop(e, item.index));
-
-      if (window.isAdminLoggedIn) div.classList.add('admin-active');
-
-      if (!item.url || item.type === 'empty') {
-        div.innerHTML = `<div class="drop-area text-center p-4 text-lg">Drag & Drop Media Here (${item.index})</div>`;
-      } else if (item.type === 'image') {
-        const img = document.createElement('img');
-        img.src = localFileMap.get(item.index) || item.url || PLACEHOLDERS.image(item.index);
-        img.alt = `Media ${item.index}`;
-        img.className = 'w-full h-full object-cover';
-        div.appendChild(img);
-      } else if (item.type === 'video') {
-        const vid = document.createElement('video');
-        vid.src = localFileMap.get(item.index) || item.url || PLACEHOLDERS.video(item.index);
-        vid.loop = true;
-        vid.autoplay = true;
-        vid.muted = true; // small previews muted
-        vid.className = 'w-full h-full object-cover cursor-pointer';
-        vid.addEventListener('click', (e) => { e.stopPropagation(); stopAllSmallVideoAudio(); vid.muted = false; vid.pause(); openFullscreenVideo(vid.src); });
-        div.appendChild(vid);
-        vid.play().catch(()=>{/* autoplay blocked maybe */});
-      }
-
-      // trash button (admin-only)
-      const trash = document.createElement('button');
-      trash.className = 'trash-button absolute top-2 right-2 p-2 bg-netflix-red text-white rounded-full shadow-lg z-10';
-      trash.style.display = window.isAdminLoggedIn ? 'block' : 'none';
-      trash.innerHTML = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z"/></svg>`;
-      trash.addEventListener('click', (e) => { e.stopPropagation(); if (window.isAdminLoggedIn) confirmRemoval(item.index); else showAlert('Access Denied'); });
-      div.appendChild(trash);
-
-      container.appendChild(div);
-    });
-  }
-
-  function stopAllSmallVideoAudio() {
-    document.querySelectorAll('.window video').forEach(v => v.muted = true);
-  }
-
-  // Fullscreen
-  function openFullscreenVideo(src) {
-    const modal = document.getElementById('videoModal');
-    const container = document.getElementById('videoContainer');
-    container.innerHTML = '';
-    const v = document.createElement('video');
-    v.src = src;
-    v.controls = true;
-    v.autoplay = true;
-    v.loop = true;
-    v.className = 'w-full h-full object-contain rounded-xl shadow-2xl';
-    container.appendChild(v);
-    modal.style.display = 'flex';
-    v.play().catch(()=>{});
-  }
-  function closeFullscreenVideo() {
-    const modal = document.getElementById('videoModal');
-    const container = document.getElementById('videoContainer');
-    const child = container.querySelector('video');
-    if (child) { child.pause(); child.src = ''; }
-    container.innerHTML = '';
-    modal.style.display = 'none';
-  }
-  window.openFullscreenVideo = openFullscreenVideo;
-  window.closeFullscreenVideo = closeFullscreenVideo;
-  window.stopAllSmallVideoAudio = stopAllSmallVideoAudio;
-
-  // Firestore listener
-  function initMediaListener() {
-    if (!firebaseAvailable || !db) {
-      // render placeholders
-      renderWindows(defaultWindows);
-      return;
-    }
-    const docRef = CONFIG_DOC_REF();
-    if (!docRef) { renderWindows(defaultWindows); return; }
-
-    onSnapshot(docRef, (snap) => {
-      if (!snap.exists()) {
-        // create default layout only when admin logged in
-        if (window.isAdminLoggedIn) {
-          const def = defaultWindows.map(d => ({ ...d }));
-          setDoc(docRef, { mediaConfig: def }).catch(e => console.error("setDoc failed:", e));
-          renderWindows(def);
-        } else {
-          renderWindows(defaultWindows);
-        }
-        return;
-      }
-      const data = snap.data()?.mediaConfig || defaultWindows;
-      renderWindows(data);
-    }, (err) => {
-      console.error("onSnapshot error:", err);
-      renderWindows(defaultWindows);
-    });
-  }
-
-  // Update Firestore media config
-  async function updateWindowData(index, type, url, storagePath = '') {
-    if (!firebaseAvailable || !db) {
-      // If no firebase, keep local only
-      // Update local fallback config used to re-render
-      const cfg = defaultWindows.map(d => ({ ...d }));
-      const idx = cfg.findIndex(i=>i.index===index);
-      if (idx>-1) cfg[idx] = {...cfg[idx], type, url, storagePath};
-      renderWindows(cfg);
-      return;
-    }
-    const docRef = CONFIG_DOC_REF();
-    if (!docRef) { console.error("Invalid docRef"); return; }
-
-    try {
-      const snap = await getDoc(docRef);
-      let mediaConfig = [];
-      if (snap.exists()) mediaConfig = snap.data().mediaConfig || defaultWindows;
-      else mediaConfig = defaultWindows.map(d=>({...d}));
-
-      const pos = mediaConfig.findIndex(i => i.index === index);
-      if (pos > -1) {
-        mediaConfig[pos] = {...mediaConfig[pos], type, url, storagePath};
-      } else {
-        mediaConfig.push({ index, type, url, storagePath });
-      }
-      await setDoc(docRef, { mediaConfig }, { merge: true });
-    } catch (e) {
-      console.error("updateWindowData error:", e);
-      showAlert("Error saving media configuration. Check permissions.");
-    }
-  }
-
-  // --- Drag/drop + upload flow ---
-  function allowDrop(ev) {
-    if (window.isAdminLoggedIn) ev.preventDefault();
-  }
-
-  async function drop(ev, index) {
-    ev.preventDefault();
-    if (!window.isAdminLoggedIn) { showAlert("Access Denied: Admin only"); return; }
-    if (!ev.dataTransfer?.files?.length) return;
-    const file = ev.dataTransfer.files[0];
-    let fileType = 'empty';
-    if (file.type.startsWith('image/')) fileType = 'image';
-    else if (file.type.startsWith('video/')) fileType = 'video';
-    else { showAlert('Unsupported file type (images/videos only)'); return; }
-
-    // Local preview
-    const tempUrl = URL.createObjectURL(file);
-    localFileMap.set(index, tempUrl);
-    await updateWindowData(index, fileType, tempUrl, ''); // temporary write (optional)
-
-    if (!firebaseAvailable || !storage) {
-      showAlert('Firebase not configured — upload disabled. (Preview shown locally)');
-      return;
-    }
-
-    // Upload to firebase storage
-    showMessage(`Uploading ${file.name}... <div class="text-sm mt-2">Please wait</div>`, `<button onclick="closeMessageModal()" class="py-2 px-6 bg-gray-600 text-white rounded-lg">Close</button>`);
-    try {
-      // create storage ref
-      const unique = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\\-_]/g, '_')}`;
-      const path = `${STORAGE_BASE}/${unique}`;
-      const ref = storageRef(storage, path);
-      const snapshot = await uploadBytes(ref, file);
-      const permanentUrl = await getDownloadURL(snapshot.ref);
-
-      // persist to firestore
-      await updateWindowData(index, fileType, permanentUrl, path);
-      localFileMap.delete(index);
-      showAlert(`Upload complete: ${file.name}`);
-    } catch (err) {
-      console.error("Upload error:", err);
-      await updateWindowData(index, 'empty', '', '');
-      localFileMap.delete(index);
-      showAlert(`Upload failed: ${err?.message || err}`);
-    }
-  }
-
-  // --- Remove media ---
-  function confirmRemoval(index) {
-    showMessage("Are you sure you want to remove this media? This action is permanent.", `
-      <button id="confirmRemoveBtn" class="py-2 px-6 bg-red-700 text-white rounded-lg">Yes, Remove</button>
-      <button id="cancelRemoveBtn" class="py-2 px-6 bg-gray-600 text-white rounded-lg">Cancel</button>
-    `);
-    document.getElementById('confirmRemoveBtn').onclick = async () => {
-      closeMessageModal();
-      await removeMediaAction(index);
-    };
-    document.getElementById('cancelRemoveBtn').onclick = () => closeMessageModal();
-  }
-
-  async function removeMediaAction(index) {
-    if (!window.isAdminLoggedIn) { showAlert("Access Denied"); return; }
-    // fetch current config
-    if (!firebaseAvailable || !db) {
-      showAlert("No server configured — nothing to remove remotely. Local preview cleared.");
-      localFileMap.delete(index);
-      await updateWindowData(index, 'empty','', '');
-      return;
-    }
-    const docRef = CONFIG_DOC_REF();
-    try {
-      const snap = await getDoc(docRef);
-      if (!snap.exists()) {
-        showAlert("Nothing to remove.");
-        return;
-      }
-      const mediaConfig = snap.data().mediaConfig || [];
-      const item = mediaConfig.find(i => i.index === index);
-      if (item?.storagePath && storage) {
+    /**
+     * Initializes Firebase and authenticates the user (anonymously for visitors, custom token for authenticated canvas user).
+     */
+    async function initFirebase() {
         try {
-          const fRef = storageRef(storage, item.storagePath);
-          await deleteObject(fRef);
-        } catch (e) {
-          console.warn("Delete object error (may be missing):", e);
+            setLogLevel('debug'); // Enable detailed logging
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Define the public Firestore document path
+            mediaDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'media_windows', 'window_config');
+
+            return new Promise((resolve) => {
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log('Firebase Auth State: Logged in (UID:', userId, ')');
+                    } else if (initialAuthToken) {
+                        // Use provided custom token for canvas user
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        userId = auth.currentUser.uid;
+                    } else {
+                        // Sign in anonymously for regular visitors
+                        const anonUser = await signInAnonymously(auth);
+                        userId = anonUser.user.uid;
+                        console.log('Firebase Auth State: Signed in anonymously (UID:', userId, ')');
+                    }
+                    resolve();
+                });
+            });
+        } catch (error) {
+            console.error("Firebase initialization failed:", error);
+            // Hide loading even on error
+            loadingIndicator.style.display = 'none';
         }
-      }
-      // mark empty in firestore
-      await updateWindowData(index, 'empty','', '');
-      localFileMap.delete(index);
-      showAlert("Media removed.");
-    } catch (e) {
-      console.error("removeMediaAction error:", e);
-      showAlert("Error removing media. Check console.");
     }
-  }
 
-  // --- Admin login/logout (local demo) ---
-  function openLogin() { document.getElementById('loginModal').style.display = 'flex'; }
-  async function loginAction() {
-    const user = document.getElementById('user').value;
-    const pass = document.getElementById('pass').value;
-    // Demo hard-coded credentials
-    if (user === 'admin' && pass === 'password') {
-      closeMessageModal();
-      showAlert("Logged in as Admin");
-      document.getElementById('loginModal').style.display = 'none';
-      updateUI(true);
-      // ensure firestore listener runs (if firebase available)
-      if (firebaseAvailable && db) initMediaListener();
-    } else {
-      showAlert("Incorrect credentials.");
+    // --- Persistence Functions ---
+
+    /**
+     * Saves the current media configuration object to Firestore.
+     */
+    async function saveMediaConfig() {
+        if (!isAdminLoggedIn) {
+            console.error("Attempted to save configuration without admin privileges.");
+            return;
+        }
+        try {
+            await setDoc(mediaDocRef, currentMediaConfig, { merge: true });
+            console.log("Media configuration saved successfully.");
+        } catch (error) {
+            console.error("Error saving media configuration:", error);
+            showAlert("Error saving media. Check console for details.");
+        }
     }
-  }
-  function logout() {
-    showAlert("Signed out.");
-    updateUI(false);
-  }
-  document.getElementById('loginAction').addEventListener('click', loginAction);
 
-  // Update UI elements
-  function updateUI(loggedIn) {
-    window.isAdminLoggedIn = !!loggedIn;
-    document.getElementById('loginButton').classList.toggle('hidden', loggedIn);
-    document.getElementById('logoutButton').classList.toggle('hidden', !loggedIn);
-    document.getElementById('statusMessage').classList.toggle('hidden', !loggedIn);
-    // show/hide trash icons if windows exist
-    document.querySelectorAll('.trash-button').forEach(btn => btn.style.display = loggedIn ? 'block' : 'none');
-  }
+    /**
+     * Loads and listens to the media configuration from Firestore in real-time.
+     */
+    function loadMediaConfig() {
+        if (!mediaDocRef) return;
 
-  // --- Initialization sequence ---
-  (async function boot() {
-    initFirebase();
-    if (firebaseAvailable) {
-      await initAuth();
-      setupAuthListener();
-    } else {
-      // render placeholders if no firebase
-      renderWindows(defaultWindows);
+        onSnapshot(mediaDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                currentMediaConfig = docSnap.data();
+                console.log("Media configuration updated from Firestore:", currentMediaConfig);
+            } else {
+                currentMediaConfig = {};
+                console.log("No media configuration found. Initializing empty config.");
+            }
+            // Render the UI based on the latest data
+            renderMediaWindows();
+            // Hide loading indicator once initial data is loaded
+            loadingIndicator.style.display = 'none';
+        }, (error) => {
+            console.error("Error listening to Firestore updates:", error);
+            showAlert("Could not load public media content.");
+            loadingIndicator.style.display = 'none';
+        });
     }
-    updateUI(false);
-  })();
 
-  // expose utilities for debugging
-  window.renderWindows = renderWindows;
-  window.updateWindowData = updateWindowData;
-  window.confirmRemoval = confirmRemoval;
-  </script>
+    /**
+     * Renders the media elements based on the local currentMediaConfig cache.
+     */
+    function renderMediaWindows() {
+        windows.forEach(windowBox => {
+            const index = windowBox.dataset.index;
+            const data = currentMediaConfig[index];
+            windowBox.innerHTML = ''; // Clear existing content
+
+            if (data && data.url && data.type) {
+                // Render media
+                if (data.type.startsWith("image/")) {
+                    const img = document.createElement("img");
+                    img.src = data.url;
+                    img.alt = `Media ${index}`;
+                    img.classList.add('w-full', 'h-full', 'object-cover');
+                    windowBox.appendChild(img);
+                } else if (data.type.startsWith("video/")) {
+                    const vid = document.createElement("video");
+                    vid.src = data.url;
+                    vid.controls = true;
+                    vid.autoplay = false;
+                    vid.loop = true;
+                    vid.classList.add('w-full', 'h-full', 'object-cover');
+                    // Add click handler for full-screen view
+                    vid.onclick = (e) => {
+                        e.stopPropagation(); // Prevent container click events
+                        openFullscreenVideo(data.url);
+                    };
+                    windowBox.appendChild(vid);
+                }
+                
+                // Add Clear button if admin is logged in
+                if (isAdminLoggedIn) {
+                    addClearButton(windowBox, index);
+                }
+                
+            } else {
+                // Render empty drop zone
+                const dropArea = document.createElement("div");
+                dropArea.classList.add('drop-area', 'text-center', 'p-4', 'transition', 'duration-300', 'absolute', 'inset-0', 'flex', 'items-center', 'justify-center');
+                dropArea.textContent = `Drag & Drop Media Here (${index})`;
+                windowBox.appendChild(dropArea);
+            }
+
+            // Update admin-active class state based on login status
+            if (isAdminLoggedIn) {
+                windowBox.classList.add('admin-active');
+            } else {
+                windowBox.classList.remove('admin-active');
+            }
+        });
+    }
+
+    /**
+     * Adds a "Clear" button to a window for the admin to remove content.
+     */
+    function addClearButton(windowBox, index) {
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = 'Clear';
+        clearBtn.classList.add('absolute', 'bottom-2', 'right-2', 'z-10', 'px-3', 'py-1', 'bg-gray-700', 'text-xs', 'text-white', 'rounded-lg', 'opacity-80', 'hover:opacity-100', 'transition');
+        clearBtn.onclick = (e) => {
+            e.stopPropagation(); // Stop event from propagating up to other handlers
+            clearWindow(index);
+        };
+        windowBox.appendChild(clearBtn);
+    }
+
+    /**
+     * Clears the media from a specific window both locally and in Firestore.
+     */
+    window.clearWindow = function(index) {
+        if (!isAdminLoggedIn) return;
+        
+        // Remove the entry from the local config
+        delete currentMediaConfig[index];
+        
+        // Save the updated configuration to Firestore
+        saveMediaConfig();
+        
+        showAlert(`Window ${index} content cleared.`);
+    }
+
+    // --- UI/Modal Functions ---
+
+    /**
+     * Helper function to manage UI state (login/logout buttons and window appearance)
+     */
+    function updateUI(loggedIn) {
+        isAdminLoggedIn = loggedIn;
+        
+        if (loggedIn) {
+            loginBtn.classList.add('hidden');
+            logoutBtn.classList.remove('hidden');
+        } else {
+            loginBtn.classList.remove('hidden');
+            logoutBtn.classList.add('hidden');
+        }
+        
+        // Rerender to show/hide admin controls (like the Clear button) and effects
+        renderMediaWindows();
+    }
+
+    /**
+     * Custom Alert Implementation
+     */
+    window.showAlert = function(message) {
+        document.getElementById('messageText').textContent = message;
+        document.getElementById('messageModal').style.display = 'flex';
+    }
+
+    window.closeMessageModal = function() {
+        document.getElementById('messageModal').style.display = 'none';
+    }
+
+    /**
+     * Opens the login modal
+     */
+    window.openLogin = function() {
+        document.getElementById("loginModal").style.display = "flex";
+        document.getElementById("user").value = "";
+        document.getElementById("pass").value = "";
+    }
+
+    /**
+     * Hardcoded Admin Login (user=admin, pass=password)
+     */
+    window.login = function() {
+        const user = document.getElementById("user").value;
+        const pass = document.getElementById("pass").value;
+
+        if (user === "admin" && pass === "password") {
+            showAlert("Logged in successfully! Welcome, Admin.");
+            document.getElementById("loginModal").style.display = "none";
+            updateUI(true); // Set logged in state
+        } else {
+            showAlert("Incorrect credentials. Please try again.");
+        }
+    }
+    
+    /**
+     * Logout function
+     */
+    window.logout = function() {
+        showAlert("You have been successfully signed out.");
+        updateUI(false); // Set logged out state
+    }
+
+    /**
+     * Opens video in fullscreen modal
+     */
+    window.openFullscreenVideo = function(videoSrc) {
+        const modal = document.getElementById('videoModal');
+        const videoContainer = document.getElementById('videoContainer');
+        videoContainer.innerHTML = '';
+
+        const fullVideo = document.createElement('video');
+        fullVideo.src = videoSrc;
+        fullVideo.controls = true;
+        fullVideo.autoplay = true; 
+        fullVideo.loop = true;
+        fullVideo.classList.add('w-full', 'h-full', 'object-contain', 'rounded-xl', 'shadow-2xl');
+
+        videoContainer.appendChild(fullVideo);
+        modal.style.display = 'flex';
+    }
+
+    /**
+     * Closes video fullscreen modal
+     */
+    window.closeFullscreenVideo = function() {
+        const modal = document.getElementById('videoModal');
+        const videoContainer = document.getElementById('videoContainer');
+        const currentVideo = videoContainer.querySelector('video');
+        if (currentVideo) {
+            currentVideo.pause();
+            currentVideo.currentTime = 0;
+        }
+        videoContainer.innerHTML = '';
+        modal.style.display = 'none';
+    }
+
+    // --- Drag and Drop Logic (Gated by isAdminLoggedIn) ---
+
+    // Prevent default behavior to allow dropping ONLY if admin is logged in
+    window.allowDrop = function(ev) {
+        if (isAdminLoggedIn) {
+            ev.preventDefault();
+        }
+    }
+
+    // Handle the drop event
+    window.drop = function(ev, index) {
+        ev.preventDefault();
+        if (!isAdminLoggedIn) {
+            showAlert("Access Denied: Only logged-in administrators can drop media files.");
+            return;
+        }
+
+        if (!ev.dataTransfer.files || ev.dataTransfer.files.length === 0) {
+            return;
+        }
+
+        const file = ev.dataTransfer.files[0];
+        const fileType = file.type;
+
+        if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
+            showAlert("Unsupported file type (Only images and videos are allowed).");
+            return;
+        }
+        
+        // Create a temporary URL for the media
+        const mediaURL = URL.createObjectURL(file);
+        
+        // Update local configuration
+        currentMediaConfig[index] = {
+            url: mediaURL,
+            type: fileType
+        };
+        
+        // Save to database
+        saveMediaConfig();
+        
+        // NOTE: We rely on the Firestore snapshot listener (loadMediaConfig) to call renderMediaWindows()
+        // which prevents race conditions with other users/sessions.
+    }
+
+    // --- Initialization ---
+    // Start the process: Initialize Firebase, then load data, then set initial UI
+    window.addEventListener('load', async () => {
+        // Initialize Firebase first
+        await initFirebase();
+        
+        // Listen for data changes
+        loadMediaConfig(); 
+        
+        // Set initial UI state (logged out/visitor)
+        updateUI(false); 
+        
+        // Optional: Close modal on outside click (Login Modal only)
+        document.getElementById('loginModal').addEventListener('click', function(e) {
+            if (e.target.id === 'loginModal') {
+                document.getElementById('loginModal').style.display = 'none';
+            }
+        });
+    });
+
+</script>
 </body>
 </html>
-How to test quickly
-Drop this index.html into a static host (or open locally).
-To test Firebase functionality, set __firebase_config and (optionally) __initial_auth_token in the page before the script runs (server inject or inline <script>window.__firebase_config = {...};</script>). Example:
-<script>
-  window.__app_id = 'my-app-id';
-  window.__firebase_config = {
-    apiKey: "...",
-    authDomain: "...",
-    projectId: "...",
-    storageBucket: "...",
-    // ...
-  };
-</script>
