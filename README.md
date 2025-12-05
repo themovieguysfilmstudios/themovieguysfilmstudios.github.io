@@ -12,6 +12,8 @@
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    // NEW: Firebase Storage Imports for permanent file saving
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
     
     // Global variables for Firebase access
     window.initializeApp = initializeApp;
@@ -24,6 +26,13 @@
     window.onSnapshot = onSnapshot;
     window.setDoc = setDoc;
     window.setLogLevel = setLogLevel;
+    
+    // NEW: Storage exports
+    window.getStorage = getStorage;
+    window.storageRef = storageRef;
+    window.uploadBytes = uploadBytes;
+    window.getDownloadURL = getDownloadURL;
+    window.deleteObject = deleteObject;
 </script>
 
 <!-- Use Inter font for a modern look -->
@@ -48,10 +57,10 @@ body {
 .admin-active {
     filter: brightness(1.0); /* Full brightness when admin is active */
     cursor: pointer;
-    box-shadow: 0 5px 15px rgba(255, 255, 255, 0.1); /* Subtle white shadow for active state */
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1), 0 0 5px 2px rgba(229, 9, 20, 0.6); /* White and Red glow for active state */
 }
 .admin-active:hover {
-    box-shadow: 0 10px 20px rgba(229, 9, 20, 0.5); /* Strong red shadow on hover */
+    box-shadow: 0 0 20px rgba(229, 9, 20, 0.8), 0 0 8px 4px rgba(255, 255, 255, 0.2); /* Stronger glow on hover */
 }
 @keyframes float {
     0%, 100% { transform: translateY(0); }
@@ -75,6 +84,8 @@ body {
     justify-content: center;
     align-items: center;
     z-index: 100;
+    flex-direction: column;
+    color: white;
 }
 .spinner {
     border: 8px solid #333;
@@ -83,10 +94,24 @@ body {
     width: 60px;
     height: 60px;
     animation: spin 1s linear infinite;
+    margin-bottom: 20px;
 }
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+.progress-bar {
+    width: 200px;
+    height: 8px;
+    background-color: #333;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background-color: #e50914;
+    transition: width 0.1s linear;
 }
 </style>
 <script>
@@ -104,8 +129,12 @@ colors: {
 <body class="bg-gray-900 text-white">
 
 <!-- Loading Indicator -->
-<div id="loading-indicator">
+<div id="loading-indicator" style="display: none;">
     <div class="spinner"></div>
+    <p id="loading-text" class="text-xl font-semibold mb-4">Loading application data...</p>
+    <div class="progress-bar">
+        <div id="upload-progress" class="progress-fill" style="width: 0%;"></div>
+    </div>
 </div>
 
 <!-- Header Section -->
@@ -135,27 +164,27 @@ colors: {
 <section class="windows grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 p-8 md:p-12 max-w-7xl mx-auto">
 <!-- Window 1 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="1" ondrop="drop(event,1)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Public URL** Here (1)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Media File** Here (1)</div>
 </div>
 <!-- Window 2 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="2" ondrop="drop(event,2)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Public URL** Here (2)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Media File** Here (2)</div>
 </div>
 <!-- Window 3 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="3" ondrop="drop(event,3)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Public URL** Here (3)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Media File** Here (3)</div>
 </div>
 <!-- Window 4 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="4" ondrop="drop(event,4)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Public URL** Here (4)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Media File** Here (4)</div>
 </div>
 <!-- Window 5: First Long Window (spans two columns) -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="5" ondrop="drop(event,5)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Long Media **Public URL** Drop Zone (5)</div>
+<div class="drop-area text-center p-4 transition duration-300">Long Media **Media File** Drop Zone (5)</div>
 </div>
 <!-- Window 6: Second Long Window (new, spans two columns) -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="6" ondrop="drop(event,6)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Long Media **Public URL** Drop Zone (6)</div>
+<div class="drop-area text-center p-4 transition duration-300">Long Media **Media File** Drop Zone (6)</div>
 </div>
 </section>
 
@@ -247,12 +276,14 @@ OK
     const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-    let app, db, auth, userId = 'visitor'; // Default ID
+    let app, db, auth, storage, userId = 'visitor'; // Default ID
     let isAdminLoggedIn = false;
     let currentMediaConfig = {}; // Local cache for media configuration
 
     // DOM elements
     const loadingIndicator = document.getElementById('loading-indicator');
+    const loadingText = document.getElementById('loading-text');
+    const uploadProgress = document.getElementById('upload-progress');
     const loginBtn = document.getElementById('loginButton');
     const logoutBtn = document.getElementById('logoutButton');
     const windows = document.querySelectorAll('.window');
@@ -269,6 +300,8 @@ OK
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
+            // NEW: Initialize Firebase Storage
+            storage = getStorage(app); 
             
             // Define the public Firestore document path
             mediaDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'media_windows', 'window_config');
@@ -293,7 +326,6 @@ OK
             });
         } catch (error) {
             console.error("Firebase initialization failed:", error);
-            // Hide loading even on error
             loadingIndicator.style.display = 'none';
         }
     }
@@ -305,7 +337,6 @@ OK
      */
     async function saveMediaConfig() {
         try {
-            // Note: Data is saved to Firestore as long as it contains a persistent URL.
             await setDoc(mediaDocRef, currentMediaConfig, { merge: true });
             console.log("Media configuration saved successfully.");
         } catch (error) {
@@ -350,13 +381,13 @@ OK
 
             if (data && data.url && data.type) {
                 // Render media
-                if (data.type.startsWith("image/") || data.type === 'image/inferred') {
+                if (data.type.startsWith("image/")) {
                     const img = document.createElement("img");
                     img.src = data.url;
                     img.alt = `Media ${index}`;
                     img.classList.add('w-full', 'h-full', 'object-cover');
                     windowBox.appendChild(img);
-                } else if (data.type.startsWith("video/") || data.type === 'video/inferred') {
+                } else if (data.type.startsWith("video/")) {
                     const vid = document.createElement("video");
                     vid.src = data.url;
                     vid.controls = true;
@@ -380,7 +411,7 @@ OK
                 // Render empty drop zone
                 const dropArea = document.createElement("div");
                 dropArea.classList.add('drop-area', 'text-center', 'p-4', 'transition', 'duration-300', 'absolute', 'inset-0', 'flex', 'items-center', 'justify-center', 'font-bold');
-                dropArea.innerHTML = `Drag & Drop **Public URL** Here (${index})`; // Updated text
+                dropArea.innerHTML = `Drag & Drop **Media File** Here (${index})`;
                 windowBox.appendChild(dropArea);
             }
 
@@ -397,13 +428,10 @@ OK
      * Adds an "X" button to a window for the admin to remove content.
      */
     function addDeleteButton(windowBox, index) {
-        // Check if the button already exists to prevent duplication on re-render
         if (windowBox.querySelector('.delete-btn')) return;
 
         const deleteBtn = document.createElement('button');
-        deleteBtn.classList.add('delete-btn'); // Add a class to identify it
-        
-        // Using an inline SVG for the 'X' icon for crisp, clean display
+        deleteBtn.classList.add('delete-btn');
         deleteBtn.innerHTML = `
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -416,26 +444,83 @@ OK
             'transition', 'duration-200'
         );
         deleteBtn.onclick = (e) => {
-            e.stopPropagation(); // Stop event from propagating up
+            e.stopPropagation(); 
             clearWindow(index);
         };
         windowBox.appendChild(deleteBtn);
     }
 
     /**
-     * Clears the media from a specific window both locally and in Firestore.
+     * Clears the media from a specific window both in Firestore and Firebase Storage.
      */
-    window.clearWindow = function(index) {
+    window.clearWindow = async function(index) {
         if (!isAdminLoggedIn) return;
         
-        // Remove the entry from the local config
-        delete currentMediaConfig[index];
-        
-        // Save the updated configuration to Firestore
-        saveMediaConfig();
-        
-        showAlert(`Window ${index} content removed.`);
+        const mediaData = currentMediaConfig[index];
+        if (!mediaData || !mediaData.storagePath) {
+            // If data exists but has no storage path (e.g., legacy manual URL), just delete Firestore entry
+            delete currentMediaConfig[index];
+            await saveMediaConfig();
+            showAlert(`Window ${index} content removed.`);
+            return;
+        }
+
+        try {
+            // 1. Delete file from Firebase Storage
+            const fileRef = storageRef(storage, mediaData.storagePath);
+            await deleteObject(fileRef);
+            console.log("File deleted successfully from Firebase Storage.");
+
+            // 2. Delete entry from Firestore
+            delete currentMediaConfig[index];
+            await saveMediaConfig();
+            
+            showAlert(`Window ${index} content and file removed permanently.`);
+        } catch (error) {
+            console.error("Error deleting file:", error);
+            showAlert("Failed to remove file. It may already be gone or permissions are incorrect. (Check console)");
+            // Still try to clear the Firestore entry if storage deletion failed
+            delete currentMediaConfig[index];
+            await saveMediaConfig();
+        }
     }
+
+    // --- File Handling Functions (NEW) ---
+
+    /**
+     * Uploads a file to Firebase Storage and returns the public URL and storage path.
+     */
+    async function uploadFileToStorage(file, index) {
+        // Prepare UI for upload
+        loadingText.textContent = `Uploading file to window ${index}...`;
+        uploadProgress.style.width = '0%';
+        loadingIndicator.style.display = 'flex';
+        
+        const timestamp = Date.now();
+        // Create a unique, permanent path in storage
+        const path = `media/${appId}/${timestamp}_${file.name}`;
+        const fileRef = storageRef(storage, path);
+
+        try {
+            // Upload the file
+            const snapshot = await uploadBytes(fileRef, file);
+            
+            // Get the permanent public download URL
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            
+            // Hide loading indicator
+            loadingIndicator.style.display = 'none';
+
+            return { url: downloadURL, storagePath: path, type: file.type };
+
+        } catch (error) {
+            console.error("Upload failed:", error);
+            loadingIndicator.style.display = 'none';
+            showAlert(`File upload failed for window ${index}. Error: ${error.message}`);
+            return null;
+        }
+    }
+
 
     // --- UI/Modal Functions ---
 
@@ -536,7 +621,7 @@ OK
         modal.style.display = 'none';
     }
 
-    // --- Drag and Drop Logic (Gated by isAdminLoggedIn) ---
+    // --- Drag and Drop Logic ---
 
     // Prevent default behavior to allow dropping ONLY if admin is logged in
     window.allowDrop = function(ev) {
@@ -546,60 +631,75 @@ OK
     }
 
     // Handle the drop event
-    window.drop = function(ev, index) {
+    window.drop = async function(ev, index) {
         ev.preventDefault();
         if (!isAdminLoggedIn) {
             showAlert("Access Denied: Only logged-in administrators can update media.");
             return;
         }
 
+        let file = null;
         let url = null;
-        let fileType = null;
 
-        // 1. Check for files (Local upload - NON-PERSISTENT)
+        // 1. Check for local file drops (PRIORITY)
         if (ev.dataTransfer.files && ev.dataTransfer.files.length > 0) {
-            showAlert("Local file drop detected. For media to be *saved* and persist across sessions, you must use a publicly hosted URL (e.g., from Imgur, Dropbox, etc.). Please drag a text URL link instead.");
-            return; 
+            file = ev.dataTransfer.files[0];
+            
+            // Basic type check
+            if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+                showAlert("Unsupported file type. Please upload an image or video file.");
+                return;
+            }
+
+            // Upload the file and get the persistent data
+            const mediaData = await uploadFileToStorage(file, index);
+            
+            if (mediaData) {
+                // Update local configuration and save persistently to Firestore
+                currentMediaConfig[index] = mediaData;
+                await saveMediaConfig();
+                showAlert(`File "${file.name}" uploaded and saved permanently to window ${index}.`);
+            }
+            return;
         } 
         
-        // 2. Check for text/URL data (PERSISTENT LINK)
+        // 2. Check for text/URL data (Fallback for manual public URL entry)
         else if (ev.dataTransfer.getData('text/plain')) {
             url = ev.dataTransfer.getData('text/plain').trim();
 
-            // Basic URL validation
             if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                showAlert("Invalid input. Please drop a valid public URL starting with http:// or https://.");
+                showAlert("Invalid input. Please drop a valid media file or a public URL starting with http:// or https://.");
                 return;
             }
-            
-            // Simple file type inference from extension
+
+            // Simple file type inference from extension for external URL
+            let fileType;
             const lowerUrl = url.toLowerCase();
             if (lowerUrl.match(/\.(jpe?g|png|gif|webp)$/)) {
-                fileType = 'image/inferred';
+                fileType = 'image/url';
             } else if (lowerUrl.match(/\.(mp4|webm|ogg)$/)) {
-                fileType = 'video/inferred';
+                fileType = 'video/url';
             } else {
-                 showAlert("Could not determine media type from the URL. Please ensure the URL links directly to an image (.jpg, .png) or video (.mp4).");
+                 showAlert("Could not determine media type from the URL. Please ensure the URL links directly to an image or video.");
                  return;
             }
             
-            showAlert(`Public URL detected. Saving persistent link for window ${index}.`);
+            showAlert(`Public URL detected. Saving persistent link for window ${index}. Note: External URLs cannot be deleted via the 'X' button; only locally uploaded files.`);
+            
+            // Update local configuration and save persistently to Firestore (storagePath is null for external URLs)
+            currentMediaConfig[index] = { url: url, type: fileType, storagePath: null };
+            await saveMediaConfig();
         } else {
-            showAlert("No media or valid URL found in the drop data.");
-            return;
+            showAlert("No media file or valid URL found in the drop data.");
         }
-
-        // Update local configuration and save persistently to Firestore
-        currentMediaConfig[index] = {
-            url: url,
-            type: fileType
-        };
-        saveMediaConfig();
     }
 
     // --- Initialization ---
-    // Start the process: Initialize Firebase, then load data, then set initial UI
     window.addEventListener('load', async () => {
+        // Show initial loading screen
+        loadingText.textContent = "Initializing security and content.";
+        loadingIndicator.style.display = 'flex';
+        
         // Initialize Firebase first
         await initFirebase();
         
