@@ -135,27 +135,27 @@ colors: {
 <section class="windows grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 p-8 md:p-12 max-w-7xl mx-auto">
 <!-- Window 1 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="1" ondrop="drop(event,1)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop Media Here (1)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Public URL** Here (1)</div>
 </div>
 <!-- Window 2 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="2" ondrop="drop(event,2)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop Media Here (2)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Public URL** Here (2)</div>
 </div>
 <!-- Window 3 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="3" ondrop="drop(event,3)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop Media Here (3)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Public URL** Here (3)</div>
 </div>
 <!-- Window 4 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="4" ondrop="drop(event,4)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop Media Here (4)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Public URL** Here (4)</div>
 </div>
 <!-- Window 5: First Long Window (spans two columns) -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="5" ondrop="drop(event,5)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Long Media Drop Zone (5)</div>
+<div class="drop-area text-center p-4 transition duration-300">Long Media **Public URL** Drop Zone (5)</div>
 </div>
 <!-- Window 6: Second Long Window (new, spans two columns) -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="6" ondrop="drop(event,6)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Long Media Drop Zone (6)</div>
+<div class="drop-area text-center p-4 transition duration-300">Long Media **Public URL** Drop Zone (6)</div>
 </div>
 </section>
 
@@ -304,10 +304,8 @@ OK
      * Saves the current media configuration object to Firestore.
      */
     async function saveMediaConfig() {
-        // We allow saving even if not admin, as long as it's triggered by a drop action 
-        // which is already gated by isAdminLoggedIn. The Firestore rules should handle 
-        // actual permission checks if this were a production environment.
         try {
+            // Note: Data is saved to Firestore as long as it contains a persistent URL.
             await setDoc(mediaDocRef, currentMediaConfig, { merge: true });
             console.log("Media configuration saved successfully.");
         } catch (error) {
@@ -352,13 +350,13 @@ OK
 
             if (data && data.url && data.type) {
                 // Render media
-                if (data.type.startsWith("image/")) {
+                if (data.type.startsWith("image/") || data.type === 'image/inferred') {
                     const img = document.createElement("img");
                     img.src = data.url;
                     img.alt = `Media ${index}`;
                     img.classList.add('w-full', 'h-full', 'object-cover');
                     windowBox.appendChild(img);
-                } else if (data.type.startsWith("video/")) {
+                } else if (data.type.startsWith("video/") || data.type === 'video/inferred') {
                     const vid = document.createElement("video");
                     vid.src = data.url;
                     vid.controls = true;
@@ -381,8 +379,8 @@ OK
             } else {
                 // Render empty drop zone
                 const dropArea = document.createElement("div");
-                dropArea.classList.add('drop-area', 'text-center', 'p-4', 'transition', 'duration-300', 'absolute', 'inset-0', 'flex', 'items-center', 'justify-center');
-                dropArea.textContent = `Drag & Drop Media Here (${index})`;
+                dropArea.classList.add('drop-area', 'text-center', 'p-4', 'transition', 'duration-300', 'absolute', 'inset-0', 'flex', 'items-center', 'justify-center', 'font-bold');
+                dropArea.innerHTML = `Drag & Drop **Public URL** Here (${index})`; // Updated text
                 windowBox.appendChild(dropArea);
             }
 
@@ -399,7 +397,12 @@ OK
      * Adds an "X" button to a window for the admin to remove content.
      */
     function addDeleteButton(windowBox, index) {
+        // Check if the button already exists to prevent duplication on re-render
+        if (windowBox.querySelector('.delete-btn')) return;
+
         const deleteBtn = document.createElement('button');
+        deleteBtn.classList.add('delete-btn'); // Add a class to identify it
+        
         // Using an inline SVG for the 'X' icon for crisp, clean display
         deleteBtn.innerHTML = `
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -546,36 +549,52 @@ OK
     window.drop = function(ev, index) {
         ev.preventDefault();
         if (!isAdminLoggedIn) {
-            showAlert("Access Denied: Only logged-in administrators can drop media files.");
+            showAlert("Access Denied: Only logged-in administrators can update media.");
             return;
         }
 
-        if (!ev.dataTransfer.files || ev.dataTransfer.files.length === 0) {
-            return;
-        }
+        let url = null;
+        let fileType = null;
 
-        const file = ev.dataTransfer.files[0];
-        const fileType = file.type;
-
-        if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
-            showAlert("Unsupported file type (Only images and videos are allowed).");
-            return;
-        }
+        // 1. Check for files (Local upload - NON-PERSISTENT)
+        if (ev.dataTransfer.files && ev.dataTransfer.files.length > 0) {
+            showAlert("Local file drop detected. For media to be *saved* and persist across sessions, you must use a publicly hosted URL (e.g., from Imgur, Dropbox, etc.). Please drag a text URL link instead.");
+            return; 
+        } 
         
-        // Create a temporary URL for the media
-        const mediaURL = URL.createObjectURL(file);
-        
-        // Update local configuration
+        // 2. Check for text/URL data (PERSISTENT LINK)
+        else if (ev.dataTransfer.getData('text/plain')) {
+            url = ev.dataTransfer.getData('text/plain').trim();
+
+            // Basic URL validation
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                showAlert("Invalid input. Please drop a valid public URL starting with http:// or https://.");
+                return;
+            }
+            
+            // Simple file type inference from extension
+            const lowerUrl = url.toLowerCase();
+            if (lowerUrl.match(/\.(jpe?g|png|gif|webp)$/)) {
+                fileType = 'image/inferred';
+            } else if (lowerUrl.match(/\.(mp4|webm|ogg)$/)) {
+                fileType = 'video/inferred';
+            } else {
+                 showAlert("Could not determine media type from the URL. Please ensure the URL links directly to an image (.jpg, .png) or video (.mp4).");
+                 return;
+            }
+            
+            showAlert(`Public URL detected. Saving persistent link for window ${index}.`);
+        } else {
+            showAlert("No media or valid URL found in the drop data.");
+            return;
+        }
+
+        // Update local configuration and save persistently to Firestore
         currentMediaConfig[index] = {
-            url: mediaURL,
+            url: url,
             type: fileType
         };
-        
-        // Save to database
         saveMediaConfig();
-        
-        // NOTE: We rely on the Firestore snapshot listener (loadMediaConfig) to call renderMediaWindows()
-        // which prevents race conditions with other users/sessions.
     }
 
     // --- Initialization ---
