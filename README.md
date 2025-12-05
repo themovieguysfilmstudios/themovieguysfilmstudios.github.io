@@ -128,6 +128,9 @@ colors: {
 </head>
 <body class="bg-gray-900 text-white">
 
+<!-- Hidden File Input for Click-to-Upload -->
+<input type="file" id="fileInput" accept="image/*,video/*" class="hidden">
+
 <!-- Loading Indicator -->
 <div id="loading-indicator" style="display: none;">
     <div class="spinner"></div>
@@ -164,27 +167,27 @@ colors: {
 <section class="windows grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 p-8 md:p-12 max-w-7xl mx-auto">
 <!-- Window 1 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="1" ondrop="drop(event,1)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Media File** Here (1)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (1)</div>
 </div>
 <!-- Window 2 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="2" ondrop="drop(event,2)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Media File** Here (2)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (2)</div>
 </div>
 <!-- Window 3 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="3" ondrop="drop(event,3)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Media File** Here (3)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (3)</div>
 </div>
 <!-- Window 4 -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="4" ondrop="drop(event,4)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop **Media File** Here (4)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (4)</div>
 </div>
 <!-- Window 5: First Long Window (spans two columns) -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="5" ondrop="drop(event,5)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Long Media **Media File** Drop Zone (5)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (5)</div>
 </div>
 <!-- Window 6: Second Long Window (new, spans two columns) -->
 <div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="6" ondrop="drop(event,6)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Long Media **Media File** Drop Zone (6)</div>
+<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (6)</div>
 </div>
 </section>
 
@@ -286,7 +289,11 @@ OK
     const uploadProgress = document.getElementById('upload-progress');
     const loginBtn = document.getElementById('loginButton');
     const logoutBtn = document.getElementById('logoutButton');
+    const fileInput = document.getElementById('fileInput'); // New reference
     const windows = document.querySelectorAll('.window');
+
+    // State to track which window is currently uploading (used by fileInput change event)
+    let currentUploadIndex = null; 
 
     // Reference to the single document storing the media configuration (public data)
     let mediaDocRef = null;
@@ -365,6 +372,9 @@ OK
             const data = currentMediaConfig[index];
             windowBox.innerHTML = ''; // Clear existing content
 
+            // Add the dynamic click handler
+            windowBox.onclick = (e) => handleWindowClick(e, index, data);
+
             if (data && data.url && data.type) {
                 // Render media
                 if (data.type.startsWith("image/")) {
@@ -376,15 +386,11 @@ OK
                 } else if (data.type.startsWith("video/")) {
                     const vid = document.createElement("video");
                     vid.src = data.url;
-                    vid.controls = true;
-                    vid.autoplay = false;
+                    // Note: Controls are not shown in preview to keep it clean, but added for fullscreen modal
+                    vid.autoplay = true; 
                     vid.loop = true;
+                    vid.muted = true; // Videos should be muted in autoplay/preview
                     vid.classList.add('w-full', 'h-full', 'object-cover');
-                    // Add click handler for full-screen view
-                    vid.onclick = (e) => {
-                        e.stopPropagation(); // Prevent container click events
-                        openFullscreenVideo(data.url);
-                    };
                     windowBox.appendChild(vid);
                 }
                 
@@ -397,7 +403,7 @@ OK
                 // Render empty drop zone
                 const dropArea = document.createElement("div");
                 dropArea.classList.add('drop-area', 'text-center', 'p-4', 'transition', 'duration-300', 'absolute', 'inset-0', 'flex', 'items-center', 'justify-center', 'font-bold');
-                dropArea.innerHTML = `Drag & Drop **Media File** Here (${index})`;
+                dropArea.innerHTML = `Drag & Drop / Click to Upload **Media File** Here (${index})`;
                 windowBox.appendChild(dropArea);
             }
 
@@ -409,6 +415,73 @@ OK
             }
         });
     }
+
+    /**
+     * Handles clicks on the media windows.
+     */
+    function handleWindowClick(e, index, mediaData) {
+        e.stopPropagation();
+
+        if (isAdminLoggedIn) {
+            // Admin mode: initiate upload dialog
+            openFileDialog(index);
+        } else if (mediaData && mediaData.url && mediaData.type.startsWith("video/")) {
+            // Visitor mode: open video fullscreen
+            openFullscreenVideo(mediaData.url);
+        } else if (mediaData && mediaData.url && mediaData.type.startsWith("image/")) {
+            // Visitor mode: open image fullscreen (simple implementation)
+            showAlert("Click the 'Admin Sign In' button to upload media, or watch the videos.");
+        } else {
+            // Visitor mode: empty box
+            showAlert("Welcome to the studio! Sign in as an admin to customize this page.");
+        }
+    }
+
+    /**
+     * Programmatically opens the hidden file input dialog.
+     */
+    function openFileDialog(index) {
+        currentUploadIndex = index;
+        fileInput.value = ''; // Clear previous selection
+        fileInput.click();
+    }
+
+    /**
+     * Main function to handle file upload from both click and drag/drop.
+     */
+    async function handleFileUpload(file, index) {
+        if (!file) return;
+
+        // Basic type check
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+            showAlert("Unsupported file type. Please upload an image or video file.");
+            return;
+        }
+
+        // 1. If media already exists, delete the old one from storage first
+        const existingMedia = currentMediaConfig[index];
+        if (existingMedia && existingMedia.storagePath) {
+            try {
+                const oldFileRef = storageRef(storage, existingMedia.storagePath);
+                await deleteObject(oldFileRef);
+                console.log(`Old file deleted from storage: ${existingMedia.storagePath}`);
+            } catch (error) {
+                // Log a warning, but proceed with the new upload
+                console.warn("Could not delete old file. It might not exist or permissions are stale:", error);
+            }
+        }
+
+        // 2. Upload the new file and get the persistent data
+        const mediaData = await uploadFileToStorage(file, index);
+        
+        if (mediaData) {
+            // 3. Update local configuration and save persistently to Firestore
+            currentMediaConfig[index] = mediaData;
+            await saveMediaConfig();
+            showAlert(`File "${file.name}" uploaded and saved permanently to window ${index}.`);
+        }
+    }
+
 
     /**
      * Adds an "X" button to a window for the admin to remove content.
@@ -430,7 +503,7 @@ OK
             'transition', 'duration-200'
         );
         deleteBtn.onclick = (e) => {
-            e.stopPropagation(); 
+            e.stopPropagation(); // Stop click from propagating to the window handler
             clearWindow(index);
         };
         windowBox.appendChild(deleteBtn);
@@ -444,10 +517,10 @@ OK
         
         const mediaData = currentMediaConfig[index];
         if (!mediaData || !mediaData.storagePath) {
-            // If data exists but has no storage path (e.g., legacy manual URL), just delete Firestore entry
+            // If data exists but has no storage path (e.g., external URL), just delete Firestore entry
             delete currentMediaConfig[index];
             await saveMediaConfig();
-            showAlert(`Window ${index} content removed.`);
+            showAlert(`Window ${index} content link removed.`);
             return;
         }
 
@@ -616,7 +689,7 @@ OK
         }
     }
 
-    // Handle the drop event
+    // Handle the drop event (still supported for convenience)
     window.drop = async function(ev, index) {
         ev.preventDefault();
         if (!isAdminLoggedIn) {
@@ -624,34 +697,16 @@ OK
             return;
         }
 
-        let file = null;
-        let url = null;
-
         // 1. Check for local file drops (PRIORITY)
         if (ev.dataTransfer.files && ev.dataTransfer.files.length > 0) {
-            file = ev.dataTransfer.files[0];
-            
-            // Basic type check
-            if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-                showAlert("Unsupported file type. Please upload an image or video file.");
-                return;
-            }
-
-            // Upload the file and get the persistent data
-            const mediaData = await uploadFileToStorage(file, index);
-            
-            if (mediaData) {
-                // Update local configuration and save persistently to Firestore
-                currentMediaConfig[index] = mediaData;
-                await saveMediaConfig();
-                showAlert(`File "${file.name}" uploaded and saved permanently to window ${index}.`);
-            }
+            const file = ev.dataTransfer.files[0];
+            handleFileUpload(file, index);
             return;
         } 
         
         // 2. Check for text/URL data (Fallback for manual public URL entry)
         else if (ev.dataTransfer.getData('text/plain')) {
-            url = ev.dataTransfer.getData('text/plain').trim();
+            const url = ev.dataTransfer.getData('text/plain').trim();
 
             if (!url.startsWith('http://') && !url.startsWith('https://')) {
                 showAlert("Invalid input. Please drop a valid media file or a public URL starting with http:// or https://.");
@@ -682,6 +737,15 @@ OK
 
     // --- Initialization (FIXED FLOW) ---
     window.addEventListener('load', async () => {
+        // Handle file selection from the click event
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0 && currentUploadIndex !== null) {
+                const file = e.target.files[0];
+                handleFileUpload(file, currentUploadIndex);
+            }
+            currentUploadIndex = null; // Reset index
+        });
+
         // Show initial loading screen
         loadingText.textContent = "Initializing security and content.";
         loadingIndicator.style.display = 'flex';
@@ -696,9 +760,15 @@ OK
                 console.log('Authentication detected. UID:', userId);
             } else if (initialAuthToken) {
                 // Sign in with the provided custom token (Canvas user)
-                await signInWithCustomToken(auth, initialAuthToken);
-                userId = auth.currentUser.uid;
-                console.log('Signed in with Custom Token. UID:', userId);
+                try {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                    userId = auth.currentUser.uid;
+                    console.log('Signed in with Custom Token. UID:', userId);
+                } catch(e) {
+                     console.error("Custom token sign-in failed, falling back to anonymous.", e);
+                     await signInAnonymously(auth);
+                     userId = auth.currentUser.uid;
+                }
             } else {
                 // Sign in anonymously (Regular visitor)
                 const anonUser = await signInAnonymously(auth);
