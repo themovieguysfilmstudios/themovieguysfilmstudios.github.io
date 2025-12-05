@@ -292,38 +292,20 @@ OK
     let mediaDocRef = null;
 
     /**
-     * Initializes Firebase and authenticates the user (anonymously for visitors, custom token for authenticated canvas user).
+     * Initializes Firebase services (app, db, auth, storage).
+     * @returns {void}
      */
-    async function initFirebase() {
+    async function initFirebaseServices() {
         try {
             setLogLevel('debug'); // Enable detailed logging
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
-            // NEW: Initialize Firebase Storage
             storage = getStorage(app); 
             
             // Define the public Firestore document path
             mediaDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'media_windows', 'window_config');
-
-            return new Promise((resolve) => {
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        console.log('Firebase Auth State: Logged in (UID:', userId, ')');
-                    } else if (initialAuthToken) {
-                        // Use provided custom token for canvas user
-                        await signInWithCustomToken(auth, initialAuthToken);
-                        userId = auth.currentUser.uid;
-                    } else {
-                        // Sign in anonymously for regular visitors
-                        const anonUser = await signInAnonymously(auth);
-                        userId = anonUser.user.uid;
-                        console.log('Firebase Auth State: Signed in anonymously (UID:', userId, ')');
-                    }
-                    resolve();
-                });
-            });
+            console.log("Firebase services initialized.");
         } catch (error) {
             console.error("Firebase initialization failed:", error);
             loadingIndicator.style.display = 'none';
@@ -347,9 +329,13 @@ OK
 
     /**
      * Loads and listens to the media configuration from Firestore in real-time.
+     * This is only called after successful authentication.
      */
     function loadMediaConfig() {
-        if (!mediaDocRef) return;
+        if (!mediaDocRef) {
+            console.error("Firestore document reference not set.");
+            return;
+        }
 
         onSnapshot(mediaDocRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -364,8 +350,8 @@ OK
             // Hide loading indicator once initial data is loaded
             loadingIndicator.style.display = 'none';
         }, (error) => {
-            console.error("Error listening to Firestore updates:", error);
-            showAlert("Could not load public media content.");
+            console.error("Error listening to Firestore updates (Permissions Issue Likely):", error);
+            showAlert("Could not load public media content due to permissions.");
             loadingIndicator.style.display = 'none';
         });
     }
@@ -694,21 +680,39 @@ OK
         }
     }
 
-    // --- Initialization ---
+    // --- Initialization (FIXED FLOW) ---
     window.addEventListener('load', async () => {
         // Show initial loading screen
         loadingText.textContent = "Initializing security and content.";
         loadingIndicator.style.display = 'flex';
         
-        // Initialize Firebase first
-        await initFirebase();
+        await initFirebaseServices(); // Initialize services (app, db, auth, storage)
         
-        // Listen for data changes
-        loadMediaConfig(); 
-        
-        // Set initial UI state (logged out/visitor)
-        updateUI(false); 
-        
+        // Use onAuthStateChanged to wait for authentication to complete before loading data
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // User already signed in from a previous session (or custom token)
+                userId = user.uid;
+                console.log('Authentication detected. UID:', userId);
+            } else if (initialAuthToken) {
+                // Sign in with the provided custom token (Canvas user)
+                await signInWithCustomToken(auth, initialAuthToken);
+                userId = auth.currentUser.uid;
+                console.log('Signed in with Custom Token. UID:', userId);
+            } else {
+                // Sign in anonymously (Regular visitor)
+                const anonUser = await signInAnonymously(auth);
+                userId = anonUser.user.uid;
+                console.log('Signed in anonymously. UID:', userId);
+            }
+            
+            // NOW that we are guaranteed to be authenticated, start the Firestore listener.
+            loadMediaConfig(); 
+
+            // Set initial UI state (logged out/visitor)
+            updateUI(false); 
+        });
+
         // Optional: Close modal on outside click (Login Modal only)
         document.getElementById('loginModal').addEventListener('click', function(e) {
             if (e.target.id === 'loginModal') {
