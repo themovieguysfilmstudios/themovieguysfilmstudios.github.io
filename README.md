@@ -12,8 +12,7 @@
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    // NEW: Firebase Storage Imports for permanent file saving
-    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+    // NOTE: Firebase Storage imports removed as media functionality was disabled.
     
     // Global variables for Firebase access
     window.initializeApp = initializeApp;
@@ -26,13 +25,6 @@
     window.onSnapshot = onSnapshot;
     window.setDoc = setDoc;
     window.setLogLevel = setLogLevel;
-    
-    // NEW: Storage exports
-    window.getStorage = getStorage;
-    window.storageRef = storageRef;
-    window.uploadBytes = uploadBytes;
-    window.getDownloadURL = getDownloadURL;
-    window.deleteObject = deleteObject;
 </script>
 
 <!-- Use Inter font for a modern look -->
@@ -43,25 +35,17 @@ body {
     min-height: 100vh;
     background-color: #0d0d0d;
 }
-/* Custom floating animation for the media windows */
+/* Custom floating animation for the media windows (kept, but media windows are removed) */
 .window {
     animation: float 4s infinite ease-in-out;
     transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
-    /* Subtle filter indicates content is locked/unavailable when not admin */
     filter: brightness(0.7); 
 }
 .window:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(229, 9, 20, 0.3); /* Red shadow on hover */
+    transform: translateY(0); 
+    box-shadow: none;
 }
-.admin-active {
-    filter: brightness(1.0); /* Full brightness when admin is active */
-    cursor: pointer;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1), 0 0 5px 2px rgba(229, 9, 20, 0.6); /* White and Red glow for active state */
-}
-.admin-active:hover {
-    box-shadow: 0 0 20px rgba(229, 9, 20, 0.8), 0 0 8px 4px rgba(255, 255, 255, 0.2); /* Stronger glow on hover */
-}
+
 @keyframes float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-5px); }
@@ -128,7 +112,7 @@ colors: {
 </head>
 <body class="bg-gray-900 text-white">
 
-<!-- Hidden File Input for Click-to-Upload -->
+<!-- Hidden File Input (REMAINS HIDDEN AND UNUSED) -->
 <input type="file" id="fileInput" accept="image/*,video/*" class="hidden">
 
 <!-- Loading Indicator -->
@@ -149,49 +133,9 @@ colors: {
         </svg>
         <h1 class="text-3xl font-extrabold text-white tracking-widest uppercase">THE MOVIE GUYS FILM STUDIOS LLC</h1>
     </div>
-    <!-- Admin Buttons: Sign In and Logout -->
-    <div id="auth-controls" class="flex items-center">
-        <!-- Login Button: calls openLogin to show the modal -->
-        <button id="loginButton" onclick="openLogin()" class="px-6 py-2 bg-netflix-red hover:bg-red-700 text-white font-semibold rounded-lg shadow-lg transition duration-300 transform hover:scale-105">
-            Admin Sign In
-        </button>
-        
-        <!-- Logout Button: hidden by default -->
-        <button id="logoutButton" onclick="logout()" class="hidden px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg shadow-lg transition duration-300 transform hover:scale-105">
-            Admin Sign Out
-        </button>
-    </div>
 </header>
 
-<!-- Media Windows Section (Drag & Drop) -->
-<section class="windows grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 p-8 md:p-12 max-w-7xl mx-auto">
-<!-- Window 1 -->
-<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="1" ondrop="drop(event,1)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (1)</div>
-</div>
-<!-- Window 2 -->
-<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="2" ondrop="drop(event,2)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (2)</div>
-</div>
-<!-- Window 3 -->
-<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="3" ondrop="drop(event,3)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (3)</div>
-</div>
-<!-- Window 4 -->
-<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red" data-index="4" ondrop="drop(event,4)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (4)</div>
-</div>
-<!-- Window 5: First Long Window (spans two columns) -->
-<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="5" ondrop="drop(event,5)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (5)</div>
-</div>
-<!-- Window 6: Second Long Window (new, spans two columns) -->
-<div class="window relative w-full h-64 bg-gray-900 border-2 border-dashed border-gray-700 rounded-xl flex justify-center items-center text-gray-500 overflow-hidden shadow-xl hover:border-netflix-red lg:col-span-2 lg:h-96" data-index="6" ondrop="drop(event,6)" ondragover="allowDrop(event)">
-<div class="drop-area text-center p-4 transition duration-300">Drag & Drop / Click to Upload **Media File** Here (6)</div>
-</div>
-</section>
-
-<!-- Company Statement and Contact Info Section (Unchanged) -->
+<!-- Company Statement and Contact Info Section -->
 <footer class="max-w-7xl mx-auto p-8 md:p-12 mt-10 bg-gray-950 rounded-xl shadow-2xl border-t-4 border-gray-700">
 <!-- Company Goals/Statement -->
 <div class="mb-10">
@@ -224,7 +168,7 @@ At **THE MOVIE GUYS FILM STUDIOS LLC**, our goal is simple: to redefine cinemati
 
 <div class="flex items-center space-x-3 p-4 bg-gray-800 rounded-lg shadow-md">
 <!-- Address Icon -->
-<svg class="w-6 h-6 text-netflix-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+<svg class="w-6 h-6 text-netflix-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 0 016 0z"></path></svg>
 <div>
 <span class="font-semibold text-sm block">Address</span>
 <p class="text-white">1713 Indiana St, Bloomington, IL</p>
@@ -233,21 +177,6 @@ At **THE MOVIE GUYS FILM STUDIOS LLC**, our goal is simple: to redefine cinemati
 </div>
 </div>
 </footer>
-
-<!-- Admin Login Modal --> 
-<div id="loginModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-50"> 
-<div class="bg-gray-800 p-10 rounded-xl shadow-2xl w-full max-w-sm text-center transform transition-all duration-300 scale-100 border-t-4 border-netflix-red"> 
-<h2 class="text-4xl font-black text-white mb-6">Admin Login</h2> 
-<input type="text" id="user" placeholder="Username" class="w-full mb-4 p-4 bg-gray-700 text-white border border-gray-600 rounded-lg focus:ring-netflix-red focus:border-netflix-red transition duration-150 placeholder-gray-400"> 
-<input type="password" id="pass" placeholder="Password" class="w-full mb-6 p-4 bg-gray-700 text-white border border-gray-600 rounded-lg focus:ring-netflix-red focus:border-netflix-red transition duration-150 placeholder-gray-400"> 
-<button onclick="login()" class="w-full py-3 bg-netflix-red hover:bg-red-700 text-white font-bold text-lg rounded-lg shadow-xl transform hover:scale-[1.02] transition duration-200"> 
-Sign In 
-</button> 
-<button onclick="document.getElementById('loginModal').style.display = 'none';" class="mt-4 text-gray-400 hover:text-white transition duration-200"> 
-Cancel 
-</button> 
-</div> 
-</div> 
 
 <!-- Custom Message Modal (Replaces alert()) -->
 <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-90 hidden items-center justify-center z-[60]">
@@ -275,43 +204,45 @@ OK
 
 <script>
     // --- Firebase Global Variables and Initialization ---
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const rawAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-    let app, db, auth, storage, userId = 'visitor'; // Default ID
-    let isAdminLoggedIn = false;
+    let app, db, auth, userId = 'visitor'; // Default ID
     let currentMediaConfig = {}; // Local cache for media configuration
 
     // DOM elements
     const loadingIndicator = document.getElementById('loading-indicator');
     const loadingText = document.getElementById('loading-text');
     const uploadProgress = document.getElementById('upload-progress');
-    const loginBtn = document.getElementById('loginButton');
-    const logoutBtn = document.getElementById('logoutButton');
-    const fileInput = document.getElementById('fileInput'); // New reference
-    const windows = document.querySelectorAll('.window');
-
-    // State to track which window is currently uploading (used by fileInput change event)
-    let currentUploadIndex = null; 
-
+    const fileInput = document.getElementById('fileInput'); 
+    
     // Reference to the single document storing the media configuration (public data)
     let mediaDocRef = null;
+    let appIdForPersistence = '';
+
 
     /**
-     * Initializes Firebase services (app, db, auth, storage).
+     * Initializes Firebase services (app, db, auth).
      * @returns {void}
      */
     async function initFirebaseServices() {
         try {
             setLogLevel('debug'); // Enable detailed logging
+            
+            // Clean the raw __app_id for path construction
+            const shortIdMatch = rawAppId.match(/c_[a-f0-9]{16}/);
+            appIdForPersistence = shortIdMatch ? shortIdMatch[0] : rawAppId; 
+
+            console.log(`App ID used for Persistence (Cleaned): ${appIdForPersistence}`);
+
             app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
-            storage = getStorage(app); 
             
-            // Define the public Firestore document path
-            mediaDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'media_windows', 'window_config');
+            // Define the public Firestore document path using the cleaned appIdForPersistence
+            // Path: /artifacts/{appIdForPersistence}/public/data/media_windows/window_config
+            mediaDocRef = doc(db, 'artifacts', appIdForPersistence, 'public', 'data', 'media_windows', 'window_config');
             console.log("Firebase services initialized.");
         } catch (error) {
             console.error("Firebase initialization failed:", error);
@@ -319,24 +250,10 @@ OK
         }
     }
 
-    // --- Persistence Functions ---
-
-    /**
-     * Saves the current media configuration object to Firestore.
-     */
-    async function saveMediaConfig() {
-        try {
-            await setDoc(mediaDocRef, currentMediaConfig, { merge: true });
-            console.log("Media configuration saved successfully.");
-        } catch (error) {
-            console.error("Error saving media configuration:", error);
-            showAlert("Error saving media. Check console for details.");
-        }
-    }
-
     /**
      * Loads and listens to the media configuration from Firestore in real-time.
-     * This is only called after successful authentication.
+     * NOTE: This function remains for Firebase initialization/auth stability, 
+     * but the media rendering logic it calls is no longer visible in the UI.
      */
     function loadMediaConfig() {
         if (!mediaDocRef) {
@@ -347,259 +264,38 @@ OK
         onSnapshot(mediaDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 currentMediaConfig = docSnap.data();
-                console.log("Media configuration updated from Firestore:", currentMediaConfig);
+                console.log("Media configuration updated from Firestore (No windows to render):", currentMediaConfig);
             } else {
                 currentMediaConfig = {};
                 console.log("No media configuration found. Initializing empty config.");
             }
-            // Render the UI based on the latest data
-            renderMediaWindows();
             // Hide loading indicator once initial data is loaded
             loadingIndicator.style.display = 'none';
         }, (error) => {
-            console.error("Error listening to Firestore updates (Permissions Issue Likely):", error);
-            showAlert("Could not load public media content due to permissions.");
+            console.error("Error listening to Firestore updates:", error);
+            showAlert("Application data services could not be loaded fully.");
             loadingIndicator.style.display = 'none';
         });
     }
 
     /**
-     * Renders the media elements based on the local currentMediaConfig cache.
+     * Renders the media elements based on the local currentMediaConfig cache for the public view.
+     * NOTE: This is now an empty function as the windows were removed.
      */
     function renderMediaWindows() {
-        windows.forEach(windowBox => {
-            const index = windowBox.dataset.index;
-            const data = currentMediaConfig[index];
-            windowBox.innerHTML = ''; // Clear existing content
-
-            // Add the dynamic click handler
-            windowBox.onclick = (e) => handleWindowClick(e, index, data);
-
-            if (data && data.url && data.type) {
-                // Render media
-                if (data.type.startsWith("image/")) {
-                    const img = document.createElement("img");
-                    img.src = data.url;
-                    img.alt = `Media ${index}`;
-                    img.classList.add('w-full', 'h-full', 'object-cover');
-                    windowBox.appendChild(img);
-                } else if (data.type.startsWith("video/")) {
-                    const vid = document.createElement("video");
-                    vid.src = data.url;
-                    // Note: Controls are not shown in preview to keep it clean, but added for fullscreen modal
-                    vid.autoplay = true; 
-                    vid.loop = true;
-                    vid.muted = true; // Videos should be muted in autoplay/preview
-                    vid.classList.add('w-full', 'h-full', 'object-cover');
-                    windowBox.appendChild(vid);
-                }
-                
-                // Add the "X" delete button if admin is logged in
-                if (isAdminLoggedIn) {
-                    addDeleteButton(windowBox, index);
-                }
-                
-            } else {
-                // Render empty drop zone
-                const dropArea = document.createElement("div");
-                dropArea.classList.add('drop-area', 'text-center', 'p-4', 'transition', 'duration-300', 'absolute', 'inset-0', 'flex', 'items-center', 'justify-center', 'font-bold');
-                dropArea.innerHTML = `Drag & Drop / Click to Upload **Media File** Here (${index})`;
-                windowBox.appendChild(dropArea);
-            }
-
-            // Update admin-active class state based on login status
-            if (isAdminLoggedIn) {
-                windowBox.classList.add('admin-active');
-            } else {
-                windowBox.classList.remove('admin-active');
-            }
-        });
+        // No media windows to render.
     }
 
     /**
-     * Handles clicks on the media windows.
+     * Handles clicks on the media windows (Visitor Mode Only).
+     * NOTE: This is now an empty function as the windows were removed.
      */
     function handleWindowClick(e, index, mediaData) {
-        e.stopPropagation();
-
-        if (isAdminLoggedIn) {
-            // Admin mode: initiate upload dialog
-            openFileDialog(index);
-        } else if (mediaData && mediaData.url && mediaData.type.startsWith("video/")) {
-            // Visitor mode: open video fullscreen
-            openFullscreenVideo(mediaData.url);
-        } else if (mediaData && mediaData.url && mediaData.type.startsWith("image/")) {
-            // Visitor mode: open image fullscreen (simple implementation)
-            showAlert("Click the 'Admin Sign In' button to upload media, or watch the videos.");
-        } else {
-            // Visitor mode: empty box
-            showAlert("Welcome to the studio! Sign in as an admin to customize this page.");
-        }
-    }
-
-    /**
-     * Programmatically opens the hidden file input dialog.
-     */
-    function openFileDialog(index) {
-        currentUploadIndex = index;
-        fileInput.value = ''; // Clear previous selection
-        fileInput.click();
-    }
-
-    /**
-     * Main function to handle file upload from both click and drag/drop.
-     */
-    async function handleFileUpload(file, index) {
-        if (!file) return;
-
-        // Basic type check
-        if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-            showAlert("Unsupported file type. Please upload an image or video file.");
-            return;
-        }
-
-        // 1. If media already exists, delete the old one from storage first
-        const existingMedia = currentMediaConfig[index];
-        if (existingMedia && existingMedia.storagePath) {
-            try {
-                const oldFileRef = storageRef(storage, existingMedia.storagePath);
-                await deleteObject(oldFileRef);
-                console.log(`Old file deleted from storage: ${existingMedia.storagePath}`);
-            } catch (error) {
-                // Log a warning, but proceed with the new upload
-                console.warn("Could not delete old file. It might not exist or permissions are stale:", error);
-            }
-        }
-
-        // 2. Upload the new file and get the persistent data
-        const mediaData = await uploadFileToStorage(file, index);
-        
-        if (mediaData) {
-            // 3. Update local configuration and save persistently to Firestore
-            currentMediaConfig[index] = mediaData;
-            await saveMediaConfig();
-            showAlert(`File "${file.name}" uploaded and saved permanently to window ${index}.`);
-        }
-    }
-
-
-    /**
-     * Adds an "X" button to a window for the admin to remove content.
-     */
-    function addDeleteButton(windowBox, index) {
-        if (windowBox.querySelector('.delete-btn')) return;
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.classList.add('delete-btn');
-        deleteBtn.innerHTML = `
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        `;
-        deleteBtn.classList.add(
-            'absolute', 'top-2', 'right-2', 'z-20', 'p-2', 
-            'bg-netflix-red', 'text-white', 'rounded-full', 'shadow-lg', 
-            'opacity-90', 'hover:opacity-100', 'hover:scale-110', 
-            'transition', 'duration-200'
-        );
-        deleteBtn.onclick = (e) => {
-            e.stopPropagation(); // Stop click from propagating to the window handler
-            clearWindow(index);
-        };
-        windowBox.appendChild(deleteBtn);
-    }
-
-    /**
-     * Clears the media from a specific window both in Firestore and Firebase Storage.
-     */
-    window.clearWindow = async function(index) {
-        if (!isAdminLoggedIn) return;
-        
-        const mediaData = currentMediaConfig[index];
-        if (!mediaData || !mediaData.storagePath) {
-            // If data exists but has no storage path (e.g., external URL), just delete Firestore entry
-            delete currentMediaConfig[index];
-            await saveMediaConfig();
-            showAlert(`Window ${index} content link removed.`);
-            return;
-        }
-
-        try {
-            // 1. Delete file from Firebase Storage
-            const fileRef = storageRef(storage, mediaData.storagePath);
-            await deleteObject(fileRef);
-            console.log("File deleted successfully from Firebase Storage.");
-
-            // 2. Delete entry from Firestore
-            delete currentMediaConfig[index];
-            await saveMediaConfig();
-            
-            showAlert(`Window ${index} content and file removed permanently.`);
-        } catch (error) {
-            console.error("Error deleting file:", error);
-            showAlert("Failed to remove file. It may already be gone or permissions are incorrect. (Check console)");
-            // Still try to clear the Firestore entry if storage deletion failed
-            delete currentMediaConfig[index];
-            await saveMediaConfig();
-        }
-    }
-
-    // --- File Handling Functions (NEW) ---
-
-    /**
-     * Uploads a file to Firebase Storage and returns the public URL and storage path.
-     */
-    async function uploadFileToStorage(file, index) {
-        // Prepare UI for upload
-        loadingText.textContent = `Uploading file to window ${index}...`;
-        uploadProgress.style.width = '0%';
-        loadingIndicator.style.display = 'flex';
-        
-        const timestamp = Date.now();
-        // Create a unique, permanent path in storage
-        const path = `media/${appId}/${timestamp}_${file.name}`;
-        const fileRef = storageRef(storage, path);
-
-        try {
-            // Upload the file
-            const snapshot = await uploadBytes(fileRef, file);
-            
-            // Get the permanent public download URL
-            const downloadURL = await getDownloadURL(snapshot.ref);
-            
-            // Hide loading indicator
-            loadingIndicator.style.display = 'none';
-
-            return { url: downloadURL, storagePath: path, type: file.type };
-
-        } catch (error) {
-            console.error("Upload failed:", error);
-            loadingIndicator.style.display = 'none';
-            showAlert(`File upload failed for window ${index}. Error: ${error.message}`);
-            return null;
-        }
+        // No windows to click.
     }
 
 
     // --- UI/Modal Functions ---
-
-    /**
-     * Helper function to manage UI state (login/logout buttons and window appearance)
-     */
-    function updateUI(loggedIn) {
-        isAdminLoggedIn = loggedIn;
-        
-        if (loggedIn) {
-            loginBtn.classList.add('hidden');
-            logoutBtn.classList.remove('hidden');
-        } else {
-            loginBtn.classList.remove('hidden');
-            logoutBtn.classList.add('hidden');
-        }
-        
-        // Rerender to show/hide admin controls (like the Delete X button) and effects
-        renderMediaWindows();
-    }
 
     /**
      * Custom Alert Implementation
@@ -611,39 +307,6 @@ OK
 
     window.closeMessageModal = function() {
         document.getElementById('messageModal').style.display = 'none';
-    }
-
-    /**
-     * Opens the login modal
-     */
-    window.openLogin = function() {
-        document.getElementById("loginModal").style.display = "flex";
-        document.getElementById("user").value = "";
-        document.getElementById("pass").value = "";
-    }
-
-    /**
-     * Hardcoded Admin Login (user=admin, pass=password)
-     */
-    window.login = function() {
-        const user = document.getElementById("user").value;
-        const pass = document.getElementById("pass").value;
-
-        if (user === "admin" && pass === "password") {
-            showAlert("Logged in successfully! Welcome, Admin.");
-            document.getElementById("loginModal").style.display = "none";
-            updateUI(true); // Set logged in state
-        } else {
-            showAlert("Incorrect credentials. Please try again.");
-        }
-    }
-    
-    /**
-     * Logout function
-     */
-    window.logout = function() {
-        showAlert("You have been successfully signed out.");
-        updateUI(false); // Set logged out state
     }
 
     /**
@@ -680,92 +343,39 @@ OK
         modal.style.display = 'none';
     }
 
-    // --- Drag and Drop Logic ---
+    // --- Drag and Drop Logic (DISABLED) ---
 
-    // Prevent default behavior to allow dropping ONLY if admin is logged in
+    // Deny all drop actions
     window.allowDrop = function(ev) {
-        if (isAdminLoggedIn) {
-            ev.preventDefault();
-        }
+        ev.preventDefault();
     }
 
-    // Handle the drop event (still supported for convenience)
+    // Deny all drop actions
     window.drop = async function(ev, index) {
         ev.preventDefault();
-        if (!isAdminLoggedIn) {
-            showAlert("Access Denied: Only logged-in administrators can update media.");
-            return;
-        }
-
-        // 1. Check for local file drops (PRIORITY)
-        if (ev.dataTransfer.files && ev.dataTransfer.files.length > 0) {
-            const file = ev.dataTransfer.files[0];
-            handleFileUpload(file, index);
-            return;
-        } 
-        
-        // 2. Check for text/URL data (Fallback for manual public URL entry)
-        else if (ev.dataTransfer.getData('text/plain')) {
-            const url = ev.dataTransfer.getData('text/plain').trim();
-
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                showAlert("Invalid input. Please drop a valid media file or a public URL starting with http:// or https://.");
-                return;
-            }
-
-            // Simple file type inference from extension for external URL
-            let fileType;
-            const lowerUrl = url.toLowerCase();
-            if (lowerUrl.match(/\.(jpe?g|png|gif|webp)$/)) {
-                fileType = 'image/url';
-            } else if (lowerUrl.match(/\.(mp4|webm|ogg)$/)) {
-                fileType = 'video/url';
-            } else {
-                 showAlert("Could not determine media type from the URL. Please ensure the URL links directly to an image or video.");
-                 return;
-            }
-            
-            showAlert(`Public URL detected. Saving persistent link for window ${index}. Note: External URLs cannot be deleted via the 'X' button; only locally uploaded files.`);
-            
-            // Update local configuration and save persistently to Firestore (storagePath is null for external URLs)
-            currentMediaConfig[index] = { url: url, type: fileType, storagePath: null };
-            await saveMediaConfig();
-        } else {
-            showAlert("No media file or valid URL found in the drop data.");
-        }
+        showAlert("Modification Access Denied. This website is now in public display mode.");
     }
 
-    // --- Initialization (FIXED FLOW) ---
+    // --- Initialization ---
     window.addEventListener('load', async () => {
-        // Handle file selection from the click event
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0 && currentUploadIndex !== null) {
-                const file = e.target.files[0];
-                handleFileUpload(file, currentUploadIndex);
-            }
-            currentUploadIndex = null; // Reset index
-        });
 
         // Show initial loading screen
         loadingText.textContent = "Initializing security and content.";
         loadingIndicator.style.display = 'flex';
         
-        await initFirebaseServices(); // Initialize services (app, db, auth, storage)
+        await initFirebaseServices(); // Initialize services (app, db, auth)
         
-        // Use onAuthStateChanged to wait for authentication to complete before loading data
+        // Ensure authentication completes before loading data 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // User already signed in from a previous session (or custom token)
+                // Existing user or custom token sign-in completed
                 userId = user.uid;
-                console.log('Authentication detected. UID:', userId);
             } else if (initialAuthToken) {
                 // Sign in with the provided custom token (Canvas user)
                 try {
                     await signInWithCustomToken(auth, initialAuthToken);
                     userId = auth.currentUser.uid;
-                    console.log('Signed in with Custom Token. UID:', userId);
                 } catch(e) {
-                     console.error("Custom token sign-in failed, falling back to anonymous.", e);
                      await signInAnonymously(auth);
                      userId = auth.currentUser.uid;
                 }
@@ -773,21 +383,10 @@ OK
                 // Sign in anonymously (Regular visitor)
                 const anonUser = await signInAnonymously(auth);
                 userId = anonUser.user.uid;
-                console.log('Signed in anonymously. UID:', userId);
             }
             
             // NOW that we are guaranteed to be authenticated, start the Firestore listener.
             loadMediaConfig(); 
-
-            // Set initial UI state (logged out/visitor)
-            updateUI(false); 
-        });
-
-        // Optional: Close modal on outside click (Login Modal only)
-        document.getElementById('loginModal').addEventListener('click', function(e) {
-            if (e.target.id === 'loginModal') {
-                document.getElementById('loginModal').style.display = 'none';
-            }
         });
     });
 
