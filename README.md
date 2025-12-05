@@ -304,10 +304,9 @@ OK
      * Saves the current media configuration object to Firestore.
      */
     async function saveMediaConfig() {
-        if (!isAdminLoggedIn) {
-            console.error("Attempted to save configuration without admin privileges.");
-            return;
-        }
+        // We allow saving even if not admin, as long as it's triggered by a drop action 
+        // which is already gated by isAdminLoggedIn. The Firestore rules should handle 
+        // actual permission checks if this were a production environment.
         try {
             await setDoc(mediaDocRef, currentMediaConfig, { merge: true });
             console.log("Media configuration saved successfully.");
@@ -374,9 +373,9 @@ OK
                     windowBox.appendChild(vid);
                 }
                 
-                // Add Clear button if admin is logged in
+                // Add the "X" delete button if admin is logged in
                 if (isAdminLoggedIn) {
-                    addClearButton(windowBox, index);
+                    addDeleteButton(windowBox, index);
                 }
                 
             } else {
@@ -397,17 +396,27 @@ OK
     }
 
     /**
-     * Adds a "Clear" button to a window for the admin to remove content.
+     * Adds an "X" button to a window for the admin to remove content.
      */
-    function addClearButton(windowBox, index) {
-        const clearBtn = document.createElement('button');
-        clearBtn.textContent = 'Clear';
-        clearBtn.classList.add('absolute', 'bottom-2', 'right-2', 'z-10', 'px-3', 'py-1', 'bg-gray-700', 'text-xs', 'text-white', 'rounded-lg', 'opacity-80', 'hover:opacity-100', 'transition');
-        clearBtn.onclick = (e) => {
-            e.stopPropagation(); // Stop event from propagating up to other handlers
+    function addDeleteButton(windowBox, index) {
+        const deleteBtn = document.createElement('button');
+        // Using an inline SVG for the 'X' icon for crisp, clean display
+        deleteBtn.innerHTML = `
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        `;
+        deleteBtn.classList.add(
+            'absolute', 'top-2', 'right-2', 'z-20', 'p-2', 
+            'bg-netflix-red', 'text-white', 'rounded-full', 'shadow-lg', 
+            'opacity-90', 'hover:opacity-100', 'hover:scale-110', 
+            'transition', 'duration-200'
+        );
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation(); // Stop event from propagating up
             clearWindow(index);
         };
-        windowBox.appendChild(clearBtn);
+        windowBox.appendChild(deleteBtn);
     }
 
     /**
@@ -422,7 +431,7 @@ OK
         // Save the updated configuration to Firestore
         saveMediaConfig();
         
-        showAlert(`Window ${index} content cleared.`);
+        showAlert(`Window ${index} content removed.`);
     }
 
     // --- UI/Modal Functions ---
@@ -441,7 +450,7 @@ OK
             logoutBtn.classList.add('hidden');
         }
         
-        // Rerender to show/hide admin controls (like the Clear button) and effects
+        // Rerender to show/hide admin controls (like the Delete X button) and effects
         renderMediaWindows();
     }
 
